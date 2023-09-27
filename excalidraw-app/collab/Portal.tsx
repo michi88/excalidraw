@@ -19,10 +19,11 @@ import { newElementWith } from "../../src/element/mutateElement";
 import { BroadcastedExcalidrawElement } from "./reconciliation";
 import { encryptData } from "../../src/data/encryption";
 import { PRECEDING_ELEMENT_KEY } from "../../src/constants";
+import type { SocketTypes } from "./socket";
 
 class Portal {
   collab: TCollabClass;
-  socket: SocketIOClient.Socket | null = null;
+  socket: SocketTypes | null = null;
   socketInitialized: boolean = false; // we don't want the socket to emit any updates until it is fully initialized
   roomId: string | null = null;
   roomKey: string | null = null;
@@ -32,18 +33,13 @@ class Portal {
     this.collab = collab;
   }
 
-  open(socket: SocketIOClient.Socket, id: string, key: string) {
+  open(socket: SocketTypes, id: string, key: string) {
     this.socket = socket;
     this.roomId = id;
     this.roomKey = key;
 
     // Initialize socket listeners
-    this.socket.on("init-room", () => {
-      if (this.socket) {
-        this.socket.emit("join-room", this.roomId);
-        trackEvent("share", "room joined");
-      }
-    });
+    this.socket.joinRoom(this.roomId);
     this.socket.on("new-user", async (_socketId: string) => {
       this.broadcastScene(
         WS_SCENE_EVENT_TYPES.INIT,
@@ -90,8 +86,8 @@ class Portal {
       const { encryptedBuffer, iv } = await encryptData(this.roomKey!, encoded);
 
       this.socket?.emit(
-        volatile ? WS_EVENTS.SERVER_VOLATILE : WS_EVENTS.SERVER,
-        this.roomId,
+        (volatile ? WS_EVENTS.SERVER_VOLATILE : WS_EVENTS.SERVER) as "server-broadcast" | "server-volatile-broadcast",
+        this.roomId as string,
         encryptedBuffer,
         iv,
       );

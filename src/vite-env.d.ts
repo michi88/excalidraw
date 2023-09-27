@@ -14,6 +14,8 @@ interface ImportMetaEnv {
 
   // collaboration WebSocket server (https: string
   VITE_APP_WS_SERVER_URL: string;
+  // set to true to use firebase socket implementation
+  VITE_APP_USE_FIREBASE_SOCKET: string;
 
   // set this only if using the collaboration workflow we use on excalidraw.com
   VITE_APP_PORTAL_URL: string;

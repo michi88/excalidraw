@@ -15,6 +15,7 @@ import { MIME_TYPES } from "../../src/constants";
 import { reconcileElements } from "../collab/reconciliation";
 import { getSyncableElements, SyncableExcalidrawElement } from ".";
 import { ResolutionType } from "../../src/utility-types";
+import {SocketTypes} from "../collab/socket";
 
 // private
 // -----------------------------------------------------------------------------
@@ -35,6 +36,7 @@ let firebasePromise: Promise<typeof import("firebase/app").default> | null =
   null;
 let firestorePromise: Promise<any> | null | true = null;
 let firebaseStoragePromise: Promise<any> | null | true = null;
+let firebaseRTDBPromise: Promise<any> | null | true = null;
 
 let isFirebaseInitialized = false;
 
@@ -100,6 +102,20 @@ export const loadFirebaseStorage = async () => {
   return firebase;
 };
 
+export const loadFirebaseRTDB = async () => {
+  const firebase = await _getFirebase();
+  if (!firebaseRTDBPromise) {
+    firebaseRTDBPromise = import(
+      /* webpackChunkName: "rtdb" */ "firebase/database"
+    );
+  }
+  if (firebaseRTDBPromise !== true) {
+    await firebaseRTDBPromise;
+    firebaseRTDBPromise = true;
+  }
+  return firebase;
+};
+
 interface FirebaseStoredScene {
   sceneVersion: number;
   iv: firebase.default.firestore.Blob;
@@ -132,12 +148,12 @@ const decryptElements = async (
 };
 
 class FirebaseSceneVersionCache {
-  private static cache = new WeakMap<SocketIOClient.Socket, number>();
-  static get = (socket: SocketIOClient.Socket) => {
+  private static cache = new WeakMap<SocketTypes, number>();
+  static get = (socket: SocketTypes) => {
     return FirebaseSceneVersionCache.cache.get(socket);
   };
   static set = (
-    socket: SocketIOClient.Socket,
+    socket: SocketTypes,
     elements: readonly SyncableExcalidrawElement[],
   ) => {
     FirebaseSceneVersionCache.cache.set(socket, getSceneVersion(elements));
@@ -279,7 +295,7 @@ export const saveToFirebase = async (
 export const loadFromFirebase = async (
   roomId: string,
   roomKey: string,
-  socket: SocketIOClient.Socket | null,
+  socket: SocketTypes | null,
 ): Promise<readonly ExcalidrawElement[] | null> => {
   const firebase = await loadFirestore();
   const db = firebase.firestore();
